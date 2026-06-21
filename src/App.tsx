@@ -202,8 +202,8 @@ export function App() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <section className="grid min-h-screen grid-rows-[auto_1fr]">
+    <main className="h-screen overflow-hidden bg-background text-foreground">
+      <section className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
         <header className="flex items-center justify-between border-b border-border bg-card px-5 py-3">
           <div className="flex items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -310,19 +310,21 @@ export function App() {
             ) : null}
           </section>
 
-          <aside className="grid min-h-0 grid-rows-[auto_minmax(180px,0.8fr)_minmax(200px,1fr)_auto] border-l border-border bg-card">
+          <aside className="grid h-full min-h-0 overflow-hidden border-l border-border bg-card [grid-template-rows:auto_minmax(0,0.72fr)_minmax(0,1fr)_auto]">
             <StatusPanel status={status} />
             <SqlPanel sql={sql} />
             <ResultPanel result={result} expected={activeLesson?.expectedResult ?? null} />
-            <div className="space-y-3 border-t border-border p-4">
-              <QuerySummary
-                query={query}
-                onQueryChange={(nextQuery) => {
-                  setQuery(nextQuery);
-                  setResult(null);
-                  setStatus({ kind: "idle", message: "Query changed. Preview the result when ready." });
-                }}
-              />
+            <div className="grid max-h-44 min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-3 overflow-hidden border-t border-border bg-card p-3">
+              <div className="min-h-0 overflow-auto pr-1">
+                <QuerySummary
+                  query={query}
+                  onQueryChange={(nextQuery) => {
+                    setQuery(nextQuery);
+                    setResult(null);
+                    setStatus({ kind: "idle", message: "Query changed. Preview the result when ready." });
+                  }}
+                />
+              </div>
               <Button className="w-full" onClick={previewResult} disabled={!query.baseTableId}>
                 <PlayIcon aria-hidden="true" />
                 Preview Result
@@ -661,11 +663,11 @@ function StatusPanel({ status }: { status: QueryStatus }) {
 
 function SqlPanel({ sql }: { sql: string }) {
   return (
-    <div className="min-h-0 border-b border-border">
+    <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border-b border-border">
       <div className="border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold">Generated SQL</h2>
       </div>
-      <pre className="h-full overflow-auto p-4 text-sm leading-7">
+      <pre className="min-h-0 overflow-auto whitespace-pre-wrap p-4 text-sm leading-6 [overflow-wrap:anywhere]">
         {sql.split("\n").map((line, index) => (
           <code key={`${index}-${line}`} className="block rounded px-2 font-mono text-foreground">
             {line}
