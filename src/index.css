@@ -19,6 +19,7 @@
   --color-border: oklch(0.86 0.015 248);
   --color-input: var(--color-border);
   --color-ring: oklch(0.52 0.13 166);
+  --color-destructive: oklch(0.58 0.2 29);
   --color-canvas: oklch(0.95 0.011 106);
   --color-join: oklch(0.58 0.16 29);
   --color-select: oklch(0.91 0.07 166);
