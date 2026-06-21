@@ -323,7 +323,7 @@ export function App() {
             />
             <PanelResizeHandle
               ariaLabel="Resize query output panel"
-              className="right-0"
+              className="right-0 translate-x-1/2"
               maxValue={maxRightPanelWidth}
               minValue={minRightPanelWidth}
               onPointerDown={startRightPanelResize}
