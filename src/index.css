@@ -1,0 +1,52 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-background: oklch(0.985 0.006 106);
+  --color-foreground: oklch(0.19 0.018 248);
+  --color-card: oklch(0.998 0.002 106);
+  --color-card-foreground: var(--color-foreground);
+  --color-sidebar: oklch(0.965 0.008 196);
+  --color-primary: oklch(0.48 0.13 166);
+  --color-primary-foreground: oklch(0.99 0.004 106);
+  --color-secondary: oklch(0.92 0.018 248);
+  --color-secondary-foreground: oklch(0.24 0.02 248);
+  --color-muted-foreground: oklch(0.48 0.024 248);
+  --color-accent: oklch(0.92 0.04 196);
+  --color-accent-foreground: oklch(0.22 0.025 248);
+  --color-border: oklch(0.86 0.015 248);
+  --color-input: var(--color-border);
+  --color-ring: oklch(0.52 0.13 166);
+  --color-canvas: oklch(0.95 0.011 106);
+  --color-join: oklch(0.58 0.16 29);
+  --color-select: oklch(0.91 0.07 166);
+  --color-select-foreground: oklch(0.2 0.034 166);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    margin: 0;
+    min-width: 1024px;
+    min-height: 100vh;
+    font-family: var(--font-sans);
+  }
+
+  button {
+    font: inherit;
+  }
+}
+
+@layer utilities {
+  .schema-grid {
+    background-image:
+      linear-gradient(to right, oklch(0.8 0.01 248 / 0.45) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(0.8 0.01 248 / 0.45) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
