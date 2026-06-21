@@ -22,8 +22,8 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { MouseEvent } from "react";
-import { useMemo, useState } from "react";
+import type { MouseEvent, PointerEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { commerceSchema } from "@/data/schema";
 import { lessons } from "@/data/lessons";
@@ -83,6 +83,10 @@ const nodeTypes = {
 
 const filterOperators: FilterOperator[] = ["=", "!=", ">", "<", ">=", "<=", "contains"];
 const joinTypes: JoinType[] = ["INNER JOIN", "LEFT JOIN"];
+const minLeftPanelWidth = 220;
+const maxLeftPanelWidth = 520;
+const minRightPanelWidth = 300;
+const maxRightPanelWidth = 680;
 
 export function App() {
   const [query, setQuery] = useState<VisualQuery>(() => createEmptyQuery());
@@ -94,6 +98,8 @@ export function App() {
     message: "Build a query visually, then preview the result.",
   });
   const [actionMenu, setActionMenu] = useState<ActionMenu | null>(null);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(300);
+  const [rightPanelWidth, setRightPanelWidth] = useState(400);
 
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) ?? lessons[0];
   const joinedTableIds = useMemo(() => getJoinedTableIds(query, commerceSchema), [query]);
@@ -201,6 +207,22 @@ export function App() {
     setStatus({ kind: "idle", message: "New lesson loaded. Choose a starting table." });
   }
 
+  const resizeLeftPanel = useCallback((clientX: number) => {
+    setLeftPanelWidth(clamp(clientX, minLeftPanelWidth, maxLeftPanelWidth));
+  }, []);
+
+  const resizeRightPanel = useCallback((clientX: number) => {
+    setRightPanelWidth(clamp(window.innerWidth - clientX, minRightPanelWidth, maxRightPanelWidth));
+  }, []);
+
+  function startLeftPanelResize(event: PointerEvent<HTMLDivElement>) {
+    startPanelResize(event, resizeLeftPanel);
+  }
+
+  function startRightPanelResize(event: PointerEvent<HTMLDivElement>) {
+    startPanelResize(event, resizeRightPanel);
+  }
+
   return (
     <main className="h-screen overflow-hidden bg-background text-foreground">
       <section className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
@@ -226,7 +248,10 @@ export function App() {
           </div>
         </header>
 
-        <div className="grid min-h-0 grid-cols-[300px_minmax(0,1fr)_400px]">
+        <div
+          className="grid min-h-0"
+          style={{ gridTemplateColumns: `${leftPanelWidth}px minmax(320px, 1fr) ${rightPanelWidth}px` }}
+        >
           <aside className="min-h-0 overflow-auto border-r border-border bg-sidebar p-4">
             <div className="mb-4 flex items-center gap-2 text-sm font-medium">
               <CursorArrowRaysIcon className="size-4 text-primary" aria-hidden="true" />
@@ -279,6 +304,16 @@ export function App() {
           </aside>
 
           <section className="relative min-h-0 bg-canvas">
+            <PanelResizeHandle
+              ariaLabel="Resize lessons panel"
+              className="left-0"
+              onPointerDown={startLeftPanelResize}
+            />
+            <PanelResizeHandle
+              ariaLabel="Resize query output panel"
+              className="right-0"
+              onPointerDown={startRightPanelResize}
+            />
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -776,4 +811,61 @@ function SummaryLine({ label, value }: { label: string; value?: string }) {
       <span className="truncate">{value}</span>
     </div>
   );
+}
+
+function PanelResizeHandle({
+  ariaLabel,
+  className,
+  onPointerDown,
+}: {
+  ariaLabel: string;
+  className: string;
+  onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+}) {
+  return (
+    <div
+      role="separator"
+      aria-label={ariaLabel}
+      aria-orientation="vertical"
+      className={cn(
+        "absolute top-0 z-20 h-full w-3 -translate-x-1/2 cursor-col-resize touch-none",
+        "after:absolute after:left-1/2 after:top-0 after:h-full after:w-px after:-translate-x-1/2 after:bg-transparent",
+        "hover:after:bg-primary focus-visible:outline-none focus-visible:after:bg-primary",
+        className,
+      )}
+      tabIndex={0}
+      onPointerDown={onPointerDown}
+    />
+  );
+}
+
+function startPanelResize(
+  event: PointerEvent<HTMLDivElement>,
+  resizePanel: (clientX: number) => void,
+) {
+  event.preventDefault();
+  event.currentTarget.setPointerCapture(event.pointerId);
+  document.body.style.cursor = "col-resize";
+  document.body.style.userSelect = "none";
+  resizePanel(event.clientX);
+
+  function onPointerMove(moveEvent: globalThis.PointerEvent) {
+    resizePanel(moveEvent.clientX);
+  }
+
+  function onPointerUp() {
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("pointercancel", onPointerUp);
+  }
+
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp);
+  window.addEventListener("pointercancel", onPointerUp);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
