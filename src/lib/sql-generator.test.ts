@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { commerceSchema } from "@/data/schema";
-import { addBaseTable, addJoin, createEmptyQuery, setLimit, setSort, toggleSelectedColumn, upsertFilter } from "@/lib/query-model";
+import {
+  addBaseTable,
+  addJoin,
+  createEmptyQuery,
+  setLimit,
+  setSort,
+  toggleSelectedColumn,
+  upsertFilter,
+} from "@/lib/query-model";
 import { generateSql } from "@/lib/sql-generator";
 
 describe("generateSql", () => {
@@ -52,6 +60,25 @@ describe("generateSql", () => {
         "WHERE orders.status = 'paid'",
         "ORDER BY orders.total DESC",
         "LIMIT 3;",
+      ].join("\n"),
+    );
+  });
+
+  it("orders joins by reachability before generating SQL", () => {
+    let query = addBaseTable(createEmptyQuery(), "orders");
+    query = addJoin(query, "products_order_items", "INNER JOIN");
+    query = addJoin(query, "orders_order_items", "INNER JOIN");
+    query = toggleSelectedColumn(query, { tableId: "orders", columnId: "id" });
+    query = toggleSelectedColumn(query, { tableId: "products", columnId: "name" });
+
+    expect(generateSql(query, commerceSchema)).toBe(
+      [
+        "SELECT orders.id, products.name",
+        "FROM orders",
+        "INNER JOIN order_items",
+        "  ON orders.id = order_items.order_id",
+        "INNER JOIN products",
+        "  ON products.id = order_items.product_id;",
       ].join("\n"),
     );
   });

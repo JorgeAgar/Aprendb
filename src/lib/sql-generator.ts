@@ -25,7 +25,23 @@ export function generateSql(query: VisualQuery, schema: Schema): string {
   const lines = [`SELECT ${selectedColumns}`, `FROM ${baseTable.name}`];
 
   const joinedTableIds = new Set([query.baseTableId]);
-  for (const join of query.joins) {
+  const pendingJoins = [...query.joins];
+
+  while (pendingJoins.length > 0) {
+    const nextJoinIndex = pendingJoins.findIndex((join) => {
+      const relationship = findRelationship(schema, join.relationshipId);
+
+      return (
+        relationship &&
+        (joinedTableIds.has(relationship.fromTableId) || joinedTableIds.has(relationship.toTableId))
+      );
+    });
+
+    if (nextJoinIndex === -1) {
+      break;
+    }
+
+    const [join] = pendingJoins.splice(nextJoinIndex, 1);
     const relationship = findRelationship(schema, join.relationshipId);
     if (!relationship) {
       continue;
@@ -47,6 +63,10 @@ export function generateSql(query: VisualQuery, schema: Schema): string {
     }
 
     const nextTable = joinedTableIds.has(relationship.fromTableId) ? toTable : fromTable;
+    if (joinedTableIds.has(nextTable.id)) {
+      continue;
+    }
+
     lines.push(`${join.type} ${nextTable.name}`);
     lines.push(`  ON ${fromTable.name}.${fromColumn.name} = ${toTable.name}.${toColumn.name}`);
     joinedTableIds.add(nextTable.id);

@@ -12,8 +12,10 @@ import {
 import {
   Background,
   Controls,
+  Handle,
   MarkerType,
   MiniMap,
+  Position,
   ReactFlow,
   type Edge,
   type Node,
@@ -463,13 +465,15 @@ function SchemaTableNode({ data }: NodeProps<SchemaNode>) {
   return (
     <article
       className={cn(
-        "w-[230px] rounded-md border bg-card shadow-sm",
+        "relative w-[230px] rounded-md border bg-card shadow-sm",
         isBase && "border-primary ring-2 ring-primary/25",
         !isBase && isJoined && "border-join",
         !isJoined && query.baseTableId && reachable && "border-primary/60",
         !isJoined && query.baseTableId && !reachable && "opacity-55",
       )}
     >
+      <Handle className="opacity-0" type="target" position={Position.Left} isConnectable={false} />
+      <Handle className="opacity-0" type="source" position={Position.Right} isConnectable={false} />
       <button
         className="flex w-full items-center gap-2 border-b border-border px-3 py-2 text-left"
         onClick={(event) => onTableAction(event, table.id)}
@@ -662,8 +666,8 @@ function SqlPanel({ sql }: { sql: string }) {
         <h2 className="text-sm font-semibold">Generated SQL</h2>
       </div>
       <pre className="h-full overflow-auto p-4 text-sm leading-7">
-        {sql.split("\n").map((line) => (
-          <code key={line} className="block rounded px-2 font-mono text-foreground">
+        {sql.split("\n").map((line, index) => (
+          <code key={`${index}-${line}`} className="block rounded px-2 font-mono text-foreground">
             {line}
           </code>
         ))}
@@ -716,7 +720,7 @@ function ResultTable({ result }: { result: QueryResult }) {
       </thead>
       <tbody>
         {result.rows.map((row, rowIndex) => (
-          <tr key={row.join("|") || rowIndex}>
+          <tr key={rowIndex}>
             {row.map((value, valueIndex) => (
               <td key={`${rowIndex}-${valueIndex}`} className="border border-border px-2 py-1.5">
                 {value}
