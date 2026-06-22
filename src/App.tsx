@@ -485,17 +485,21 @@ export function App() {
 
         <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] md:hidden">
           <nav className="overflow-x-auto border-b border-border bg-card px-2 py-2" aria-label="Workspace views">
-            <div className="grid min-w-max grid-cols-5 gap-1">
+            <div className="grid min-w-max grid-cols-5 gap-1" role="tablist" aria-label="Mobile workspace views">
               {mobileTabs.map((tab) => (
                 <button
                   key={tab.id}
+                  id={`mobile-tab-${tab.id}`}
                   className={cn(
                     "rounded-md px-3 py-2 text-xs font-semibold transition-colors",
                     activeMobileTab === tab.id
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                   )}
+                  role="tab"
                   type="button"
+                  aria-controls={`mobile-panel-${tab.id}`}
+                  aria-selected={activeMobileTab === tab.id}
                   onClick={() => setActiveMobileTab(tab.id)}
                 >
                   {tab.label}
@@ -503,7 +507,12 @@ export function App() {
               ))}
             </div>
           </nav>
-          <div className="min-h-0 overflow-hidden">
+          <div
+            id={`mobile-panel-${activeMobileTab}`}
+            className="min-h-0 overflow-hidden"
+            role="tabpanel"
+            aria-labelledby={`mobile-tab-${activeMobileTab}`}
+          >
             {activeMobileTab === "lessons" ? lessonPanel : null}
             {activeMobileTab === "graph" ? graphPanel(false) : null}
             {activeMobileTab === "sql" ? <SqlPanel sql={sql} /> : null}
