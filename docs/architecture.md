@@ -34,7 +34,7 @@ The main data path is:
 
 ### `src/App.tsx`
 
-`App.tsx` is the main application shell. It owns UI state for the active lesson, passed lessons, current visual query, latest result, status message, action menu, and panel sizes.
+`App.tsx` is the main application shell. It owns UI state for the active lesson, passed lessons, current visual query, latest result, status message, and action menu.
 
 It also coordinates the layout and user workflow:
 
