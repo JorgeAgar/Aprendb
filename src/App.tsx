@@ -1,9 +1,11 @@
 import {
   ArrowPathIcon,
+  BarsArrowDownIcon,
   CheckCircleIcon,
   CircleStackIcon,
   CursorArrowRaysIcon,
   ExclamationTriangleIcon,
+  FunnelIcon,
   PlayIcon,
   PlusIcon,
   TableCellsIcon,
@@ -23,7 +25,7 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { KeyboardEvent, MouseEvent, PointerEvent } from "react";
+import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { commerceSchema } from "@/data/schema";
@@ -71,12 +73,15 @@ type QueryStatus =
   | { kind: "success"; message: string }
   | { kind: "error"; message: string };
 
+type ColumnQuickAction = "select" | "filter" | "sort";
+
 type SchemaNodeData = {
   table: SchemaTable;
   query: VisualQuery;
   joinedTableIds: string[];
   onTableAction: (event: MouseEvent, tableId: string) => void;
   onColumnAction: (event: MouseEvent, column: ColumnRef) => void;
+  onColumnQuickAction: (event: MouseEvent, column: ColumnRef, action: ColumnQuickAction) => void;
 };
 
 type SchemaNode = Node<SchemaNodeData, "schemaTable">;
@@ -116,6 +121,10 @@ export function App() {
     () => (activeLesson ? getLessonRequirementStates(activeLesson, query, result) : []),
     [activeLesson, query, result],
   );
+  const suggestedStartTableId = useMemo(
+    () => activeLesson?.requirements.find((requirement) => requirement.type === "base-table")?.tableId,
+    [activeLesson],
+  );
 
   const nodes = useMemo<SchemaNode[]>(
     () =>
@@ -129,6 +138,7 @@ export function App() {
           joinedTableIds,
           onTableAction: openTableMenu,
           onColumnAction: openColumnMenu,
+          onColumnQuickAction: handleColumnQuickAction,
         },
       })),
     [joinedTableIds, query],
@@ -176,6 +186,46 @@ export function App() {
     event.preventDefault();
     event.stopPropagation();
     setActionMenu({ kind: "column", ...column, x: event.clientX, y: event.clientY });
+  }
+
+  function updateQuery(nextQuery: VisualQuery, message = "Query changed. Preview the result when ready.") {
+    setQuery(nextQuery);
+    setResult(null);
+    setActionMenu(null);
+    setStatus({ kind: "idle", message });
+  }
+
+  function startFromTable(tableId: string) {
+    const table = findTable(commerceSchema, tableId);
+    updateQuery(addBaseTable(query, tableId), `Started from ${table?.label ?? "the selected table"}.`);
+  }
+
+  function handleColumnQuickAction(event: MouseEvent, column: ColumnRef, action: ColumnQuickAction) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!joinedTableIds.includes(column.tableId)) {
+      setActionMenu({ kind: "column", ...column, x: event.clientX, y: event.clientY });
+      return;
+    }
+
+    if (action === "select") {
+      updateQuery(toggleSelectedColumn(query, column));
+      return;
+    }
+
+    if (action === "filter") {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setActionMenu({ kind: "column", ...column, x: rect.right + 8, y: rect.top });
+      return;
+    }
+
+    const currentDirection =
+      query.sort && sameColumn(query.sort, column) ? query.sort.direction : undefined;
+    updateQuery(
+      setSort(query, { ...column, direction: currentDirection === "ASC" ? "DESC" : "ASC" }),
+      "Sort changed. Preview the result when ready.",
+    );
   }
 
   function resetCurrentQuery() {
@@ -363,17 +413,21 @@ export function App() {
               <MiniMap pannable zoomable nodeStrokeWidth={3} />
               <Controls position="bottom-left" />
             </ReactFlow>
+            {!query.baseTableId ? (
+              <CanvasEmptyState
+                activeLesson={activeLesson}
+                suggestedTableId={suggestedStartTableId}
+                onStartTable={startFromTable}
+              />
+            ) : null}
+            <RelationshipLegend hasBaseTable={Boolean(query.baseTableId)} />
             {actionMenu ? (
               <ActionMenuPanel
                 actionMenu={actionMenu}
                 query={query}
                 joinedTableIds={joinedTableIds}
                 onClose={() => setActionMenu(null)}
-                onQueryChange={(nextQuery) => {
-                  setQuery(nextQuery);
-                  setResult(null);
-                  setStatus({ kind: "idle", message: "Query changed. Preview the result when ready." });
-                }}
+                onQueryChange={updateQuery}
               />
             ) : null}
           </section>
@@ -389,11 +443,7 @@ export function App() {
             <div className="grid gap-3 border-t border-border bg-card p-3">
               <LimitControl
                 query={query}
-                onQueryChange={(nextQuery) => {
-                  setQuery(nextQuery);
-                  setResult(null);
-                  setStatus({ kind: "idle", message: "Query changed. Preview the result when ready." });
-                }}
+                onQueryChange={updateQuery}
               />
               <Button className="w-full" onClick={previewResult} disabled={!query.baseTableId}>
                 <PlayIcon aria-hidden="true" />
@@ -528,8 +578,74 @@ export function App() {
   }
 }
 
+function CanvasEmptyState({
+  activeLesson,
+  suggestedTableId,
+  onStartTable,
+}: {
+  activeLesson?: Lesson;
+  suggestedTableId?: string;
+  onStartTable: (tableId: string) => void;
+}) {
+  const suggestedTable = suggestedTableId ? findTable(commerceSchema, suggestedTableId) : undefined;
+  const tableOptions = [
+    ...(suggestedTable ? [suggestedTable] : []),
+    ...commerceSchema.tables.filter((table) => table.id !== suggestedTable?.id),
+  ];
+
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-5 z-10 w-[min(520px,calc(100%-32px))] -translate-x-1/2 rounded-md border border-border bg-card/95 p-4 shadow-lg backdrop-blur">
+      <div className="pointer-events-auto">
+        <div className="mb-3">
+          <h2 className="text-sm font-semibold">Choose a starting table</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {activeLesson
+              ? `For "${activeLesson.title}", start with ${suggestedTable?.label ?? "the lesson table"}.`
+              : "Pick the table that should appear after FROM."}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {tableOptions.map((table) => (
+            <Button
+              key={table.id}
+              size="sm"
+              variant={table.id === suggestedTable?.id ? "default" : "outline"}
+              onClick={() => onStartTable(table.id)}
+            >
+              <TableCellsIcon aria-hidden="true" />
+              {table.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RelationshipLegend({ hasBaseTable }: { hasBaseTable: boolean }) {
+  return (
+    <div className="absolute right-4 top-4 z-10 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      <h2 className="mb-2 font-semibold">Relationships</h2>
+      <div className="grid gap-1.5 text-muted-foreground">
+        <LegendItem className="border-solid border-join" label="Joined" />
+        <LegendItem className="border-dashed border-primary" label={hasBaseTable ? "Available join" : "Available after start"} />
+        <LegendItem className="border-dashed border-border" label="Unavailable" />
+      </div>
+    </div>
+  );
+}
+
+function LegendItem({ className, label }: { className: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className={cn("w-8 border-t-2", className)} aria-hidden="true" />
+      <span>{label}</span>
+    </div>
+  );
+}
+
 function SchemaTableNode({ data }: NodeProps<SchemaNode>) {
-  const { table, query, joinedTableIds, onTableAction, onColumnAction } = data;
+  const { table, query, joinedTableIds, onTableAction, onColumnAction, onColumnQuickAction } = data;
   const isBase = query.baseTableId === table.id;
   const isJoined = joinedTableIds.includes(table.id);
   const reachable = isTableReachable(query, commerceSchema, table.id);
@@ -570,25 +686,85 @@ function SchemaTableNode({ data }: NodeProps<SchemaNode>) {
           const sorted = query.sort?.tableId === table.id && query.sort.columnId === column.id;
 
           return (
-            <button
+            <div
               key={column.id}
               className={cn(
-                "grid w-full grid-cols-[1fr_auto] items-center rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent",
+                "group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center rounded text-xs transition-colors hover:bg-accent focus-within:bg-accent",
                 selected && "bg-select text-select-foreground hover:bg-select",
                 (filtered || sorted) && !selected && "bg-secondary",
               )}
-              onClick={(event) => onColumnAction(event, { tableId: table.id, columnId: column.id })}
-              onContextMenu={(event) => onColumnAction(event, { tableId: table.id, columnId: column.id })}
             >
-              <span className="truncate font-medium">{column.name}</span>
-              <span className="text-muted-foreground">
-                {filtered ? "WHERE" : sorted ? "SORT" : column.role ? column.role.toUpperCase() : column.type}
-              </span>
-            </button>
+              <button
+                className="min-w-0 px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={(event) => onColumnAction(event, { tableId: table.id, columnId: column.id })}
+                onContextMenu={(event) => onColumnAction(event, { tableId: table.id, columnId: column.id })}
+              >
+                <span className="block truncate font-medium">{column.name}</span>
+              </button>
+              <div className="flex items-center gap-0.5 pr-1">
+                <span className="px-1 text-muted-foreground">
+                  {filtered ? "WHERE" : sorted ? "SORT" : column.role ? column.role.toUpperCase() : column.type}
+                </span>
+                <ColumnQuickActionButton
+                  active={selected}
+                  ariaLabel={`${selected ? "Remove" : "Add"} ${table.label}.${column.label} from result`}
+                  onClick={(event) =>
+                    onColumnQuickAction(event, { tableId: table.id, columnId: column.id }, "select")
+                  }
+                >
+                  <PlusIcon className="size-3.5" aria-hidden="true" />
+                </ColumnQuickActionButton>
+                <ColumnQuickActionButton
+                  active={filtered}
+                  ariaLabel={`Filter ${table.label}.${column.label}`}
+                  onClick={(event) =>
+                    onColumnQuickAction(event, { tableId: table.id, columnId: column.id }, "filter")
+                  }
+                >
+                  <FunnelIcon className="size-3.5" aria-hidden="true" />
+                </ColumnQuickActionButton>
+                <ColumnQuickActionButton
+                  active={sorted}
+                  ariaLabel={`Sort ${table.label}.${column.label}`}
+                  onClick={(event) =>
+                    onColumnQuickAction(event, { tableId: table.id, columnId: column.id }, "sort")
+                  }
+                >
+                  <BarsArrowDownIcon className="size-3.5" aria-hidden="true" />
+                </ColumnQuickActionButton>
+              </div>
+            </div>
           );
         })}
       </div>
     </article>
+  );
+}
+
+function ColumnQuickActionButton({
+  active,
+  ariaLabel,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  ariaLabel: string;
+  children: ReactNode;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <button
+      className={cn(
+        "flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:bg-background hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 group-focus-within:opacity-100",
+        active && "bg-background text-primary opacity-100",
+      )}
+      type="button"
+      aria-label={ariaLabel}
+      title={ariaLabel}
+      onClick={onClick}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -612,6 +788,8 @@ function ColumnActions({
   const [operator, setOperator] = useState<FilterOperator>(existingFilter?.operator ?? "=");
   const [value, setValue] = useState(existingFilter?.value ?? "");
   const columnLabel = formatColumnRef(commerceSchema, columnRef);
+  const column = findColumn(commerceSchema, columnRef);
+  const sampleValues = column?.sampleValues ?? [];
 
   if (disabled) {
     return (
@@ -650,11 +828,25 @@ function ColumnActions({
           </select>
           <input
             className="h-9 min-w-0 rounded-md border border-input bg-background px-2 text-sm"
-            placeholder="value"
+            placeholder={sampleValues[0] !== undefined ? String(sampleValues[0]) : "value"}
             value={value}
             onChange={(event) => setValue(event.target.value)}
           />
         </div>
+        {sampleValues.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {sampleValues.map((sampleValue) => (
+              <button
+                key={String(sampleValue)}
+                className="rounded border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                type="button"
+                onClick={() => setValue(String(sampleValue))}
+              >
+                {String(sampleValue)}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 gap-2">
           <Button
             size="sm"
