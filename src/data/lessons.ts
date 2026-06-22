@@ -9,6 +9,28 @@ export const lessons: Lesson[] = [
       { title: "Start table", body: "Use customers as the FROM table." },
       { title: "Result column", body: "Add customers.name to the result." },
     ],
+    requirements: [
+      {
+        id: "select-customers-base",
+        type: "base-table",
+        label: "Start from customers",
+        tip: "Choose the Customers table as the FROM table.",
+        tableId: "customers",
+      },
+      {
+        id: "select-customers-columns",
+        type: "selected-columns",
+        label: "Return customer names",
+        tip: "Add only customers.name to the result columns.",
+        columns: [{ tableId: "customers", columnId: "name" }],
+      },
+      {
+        id: "select-customers-result",
+        type: "expected-result",
+        label: "Preview matches the expected rows",
+        tip: "Run the preview after the visual query looks right.",
+      },
+    ],
     expectedResult: {
       columns: ["name"],
       rows: [["Ava Chen"], ["Mateo Ruiz"], ["Nina Patel"], ["Owen Brooks"]],
@@ -21,6 +43,38 @@ export const lessons: Lesson[] = [
     tips: [
       { title: "Filter", body: "Filter orders.status to paid." },
       { title: "Columns", body: "Add orders.id and orders.total to the result." },
+    ],
+    requirements: [
+      {
+        id: "paid-orders-base",
+        type: "base-table",
+        label: "Start from orders",
+        tip: "Choose Orders as the FROM table.",
+        tableId: "orders",
+      },
+      {
+        id: "paid-orders-columns",
+        type: "selected-columns",
+        label: "Return id and total",
+        tip: "Add orders.id followed by orders.total.",
+        columns: [
+          { tableId: "orders", columnId: "id" },
+          { tableId: "orders", columnId: "total" },
+        ],
+      },
+      {
+        id: "paid-orders-filter",
+        type: "filters",
+        label: "Keep only paid orders",
+        tip: "Filter orders.status = paid.",
+        filters: [{ tableId: "orders", columnId: "status", operator: "=", value: "paid" }],
+      },
+      {
+        id: "paid-orders-result",
+        type: "expected-result",
+        label: "Preview matches the expected rows",
+        tip: "Preview the filtered result and check the row count.",
+      },
     ],
     expectedResult: {
       columns: ["id", "total"],
@@ -38,6 +92,38 @@ export const lessons: Lesson[] = [
     tips: [
       { title: "Join", body: "Start from customers, then join orders." },
       { title: "Columns", body: "Add customers.name and orders.total." },
+    ],
+    requirements: [
+      {
+        id: "customers-orders-base",
+        type: "base-table",
+        label: "Start from customers",
+        tip: "Choose Customers before joining Orders.",
+        tableId: "customers",
+      },
+      {
+        id: "customers-orders-join",
+        type: "joined-tables",
+        label: "Join orders",
+        tip: "Add Orders through the customers.id = orders.customer_id relationship.",
+        tableIds: ["orders"],
+      },
+      {
+        id: "customers-orders-columns",
+        type: "selected-columns",
+        label: "Return name and total",
+        tip: "Add customers.name followed by orders.total.",
+        columns: [
+          { tableId: "customers", columnId: "name" },
+          { tableId: "orders", columnId: "total" },
+        ],
+      },
+      {
+        id: "customers-orders-result",
+        type: "expected-result",
+        label: "Preview matches the expected rows",
+        tip: "Preview once the join and result columns are set.",
+      },
     ],
     expectedResult: {
       columns: ["name", "total"],
@@ -57,6 +143,39 @@ export const lessons: Lesson[] = [
     tips: [
       { title: "Bridge table", body: "Join orders to order_items, then products." },
       { title: "Columns", body: "Add orders.id, products.name, and order_items.quantity." },
+    ],
+    requirements: [
+      {
+        id: "orders-products-base",
+        type: "base-table",
+        label: "Start from orders",
+        tip: "Choose Orders as the starting table.",
+        tableId: "orders",
+      },
+      {
+        id: "orders-products-joins",
+        type: "joined-tables",
+        label: "Join order_items and products",
+        tip: "Reach Products through Order Items.",
+        tableIds: ["order_items", "products"],
+      },
+      {
+        id: "orders-products-columns",
+        type: "selected-columns",
+        label: "Return id, product, quantity",
+        tip: "Add orders.id, products.name, then order_items.quantity.",
+        columns: [
+          { tableId: "orders", columnId: "id" },
+          { tableId: "products", columnId: "name" },
+          { tableId: "order_items", columnId: "quantity" },
+        ],
+      },
+      {
+        id: "orders-products-result",
+        type: "expected-result",
+        label: "Preview matches the expected rows",
+        tip: "Preview after both joins are connected.",
+      },
     ],
     expectedResult: {
       columns: ["id", "name", "quantity"],
@@ -80,6 +199,45 @@ export const lessons: Lesson[] = [
     tips: [
       { title: "Sort", body: "Sort orders.total descending." },
       { title: "Limit", body: "Limit the result to 3 rows." },
+    ],
+    requirements: [
+      {
+        id: "top-orders-base",
+        type: "base-table",
+        label: "Start from orders",
+        tip: "Choose Orders as the FROM table.",
+        tableId: "orders",
+      },
+      {
+        id: "top-orders-columns",
+        type: "selected-columns",
+        label: "Return id and total",
+        tip: "Add orders.id followed by orders.total.",
+        columns: [
+          { tableId: "orders", columnId: "id" },
+          { tableId: "orders", columnId: "total" },
+        ],
+      },
+      {
+        id: "top-orders-sort",
+        type: "sort",
+        label: "Sort by total descending",
+        tip: "Set orders.total to DESC so the largest orders appear first.",
+        sort: { tableId: "orders", columnId: "total", direction: "DESC" },
+      },
+      {
+        id: "top-orders-limit",
+        type: "limit",
+        label: "Limit to three rows",
+        tip: "Set LIMIT to 3.",
+        value: 3,
+      },
+      {
+        id: "top-orders-result",
+        type: "expected-result",
+        label: "Preview matches the expected rows",
+        tip: "Preview to verify the top three are in order.",
+      },
     ],
     expectedResult: {
       columns: ["id", "total"],

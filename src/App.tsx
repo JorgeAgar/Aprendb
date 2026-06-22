@@ -8,6 +8,7 @@ import {
   PlusIcon,
   TableCellsIcon,
   XMarkIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import {
   Background,
@@ -39,6 +40,7 @@ import {
   isTableReachable,
   removeFilter,
   removeJoin,
+  sameColumn,
   setLimit,
   setSort,
   toggleSelectedColumn,
@@ -47,13 +49,16 @@ import {
 import { generateSql } from "@/lib/sql-generator";
 import { executeSql } from "@/lib/sqlite";
 import { cn } from "@/lib/utils";
-import { validateLessonResult } from "@/lib/validation";
+import { getLessonValidationReport, validateLessonResult, type LessonValidationReport } from "@/lib/validation";
 import type {
   ColumnRef,
   FilterOperator,
   JoinType,
+  Lesson,
+  LessonRequirement,
   QueryResult,
   SchemaTable,
+  RequirementState,
   VisualQuery,
 } from "@/types/query";
 
@@ -103,6 +108,14 @@ export function App() {
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) ?? lessons[0];
   const joinedTableIds = useMemo(() => getJoinedTableIds(query, commerceSchema), [query]);
   const sql = useMemo(() => generateSql(query, commerceSchema), [query]);
+  const validationReport = useMemo(
+    () => (activeLesson ? getLessonValidationReport(result, activeLesson.expectedResult) : null),
+    [activeLesson, result],
+  );
+  const requirementStates = useMemo(
+    () => (activeLesson ? getLessonRequirementStates(activeLesson, query, result) : []),
+    [activeLesson, query, result],
+  );
 
   const nodes = useMemo<SchemaNode[]>(
     () =>
@@ -298,7 +311,12 @@ export function App() {
                   <h2 className="text-sm font-semibold">Current Goal</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{activeLesson.goal}</p>
                 </div>
-                <div className="space-y-2">
+                <LessonChecklist
+                  requirements={requirementStates}
+                  highlightFirstAction={!query.baseTableId}
+                />
+                <div className="space-y-2 border-t border-border pt-3">
+                  <h2 className="text-xs font-semibold uppercase text-muted-foreground">Tips</h2>
                   {activeLesson.tips.map((tip) => (
                     <div key={tip.title} className="rounded-md border border-border bg-background p-3">
                       <div className="text-xs font-semibold uppercase text-primary">{tip.title}</div>
@@ -363,7 +381,11 @@ export function App() {
           <aside className="grid h-full min-h-0 overflow-hidden border-l border-border bg-card [grid-template-rows:auto_minmax(0,0.72fr)_minmax(0,1fr)_auto]">
             <StatusPanel status={status} />
             <SqlPanel sql={sql} />
-            <ResultPanel result={result} expected={activeLesson?.expectedResult ?? null} />
+            <ResultPanel
+              result={result}
+              expected={activeLesson?.expectedResult ?? null}
+              report={validationReport}
+            />
             <div className="grid gap-3 border-t border-border bg-card p-3">
               <LimitControl
                 query={query}
@@ -683,6 +705,58 @@ function ColumnActions({
   );
 }
 
+function LessonChecklist({
+  requirements,
+  highlightFirstAction,
+}: {
+  requirements: Array<{ requirement: LessonRequirement; state: RequirementState }>;
+  highlightFirstAction: boolean;
+}) {
+  const firstActionId = requirements.find(({ state }) => state !== "complete")?.requirement.id;
+
+  return (
+    <div className="space-y-2">
+      <h2 className="text-xs font-semibold uppercase text-muted-foreground">Checklist</h2>
+      {requirements.map(({ requirement, state }) => {
+        const highlighted = highlightFirstAction && requirement.id === firstActionId;
+
+        return (
+          <div
+            key={requirement.id}
+            className={cn(
+              "rounded-md border bg-background p-3",
+              state === "complete" && "border-primary/40 bg-select",
+              state === "incomplete" && "border-border",
+              state === "needs-preview" && "border-border bg-secondary/60",
+              highlighted && "border-primary bg-primary/10 ring-2 ring-primary/20",
+            )}
+          >
+            <div className="flex items-start gap-2">
+              <RequirementIcon state={state} />
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-foreground">{requirement.label}</div>
+                <p className="mt-1 text-xs text-muted-foreground">{requirement.tip}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RequirementIcon({ state }: { state: RequirementState }) {
+  if (state === "complete") {
+    return <CheckCircleIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />;
+  }
+
+  if (state === "needs-preview") {
+    return <PlayIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />;
+  }
+
+  return <XCircleIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />;
+}
+
 function StatusPanel({ status }: { status: QueryStatus }) {
   return (
     <div
@@ -729,9 +803,11 @@ function SqlPanel({ sql }: { sql: string }) {
 function ResultPanel({
   result,
   expected,
+  report,
 }: {
   result: QueryResult | null;
   expected: QueryResult | null;
+  report: LessonValidationReport | null;
 }) {
   return (
     <div className="min-h-0 overflow-auto border-b border-border p-4">
@@ -741,6 +817,7 @@ function ResultPanel({
           Expected: {expected ? `${expected.rows.length} rows` : "none"}
         </span>
       </div>
+      <ResultFeedback result={result} report={report} />
       {result && result.columns.length > 0 ? <ResultTable result={result} /> : null}
       {result && result.columns.length === 0 ? (
         <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">
@@ -752,6 +829,61 @@ function ResultPanel({
           Preview the query to execute it against the commerce database.
         </p>
       ) : null}
+    </div>
+  );
+}
+
+function ResultFeedback({
+  result,
+  report,
+}: {
+  result: QueryResult | null;
+  report: LessonValidationReport | null;
+}) {
+  if (!report) {
+    return null;
+  }
+
+  if (!result) {
+    return (
+      <div className="mb-3 rounded-md border border-border bg-secondary/60 p-3 text-xs text-muted-foreground">
+        Preview the query to compare actual rows with the expected result.
+      </div>
+    );
+  }
+
+  if (report.passed) {
+    return (
+      <div className="mb-3 flex items-start gap-2 rounded-md border border-primary/40 bg-select p-3 text-xs text-select-foreground">
+        <CheckCircleIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+        <span>Result matches the expected columns, rows, and order.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-3 rounded-md border border-border bg-background p-3">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-foreground">
+        <ExclamationTriangleIcon className="size-4 text-destructive" aria-hidden="true" />
+        Adjust the query
+      </div>
+      <ul className="space-y-1.5 text-xs text-muted-foreground">
+        {report.diagnostics.slice(0, 4).map((diagnostic) => (
+          <li key={`${diagnostic.type}-${diagnostic.message}`}>
+            {diagnostic.message}
+            {diagnostic.type === "missing-rows" || diagnostic.type === "extra-rows" ? (
+              <span className="block pl-3 text-[11px]">{formatRows(diagnostic.rows)}</span>
+            ) : null}
+            {diagnostic.type === "order-differences" ? (
+              <span className="block pl-3 text-[11px]">
+                Row {diagnostic.differences[0]?.index + 1}: expected{" "}
+                {formatRow(diagnostic.differences[0]?.expected ?? [])}, got{" "}
+                {formatRow(diagnostic.differences[0]?.actual ?? [])}.
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -874,6 +1006,85 @@ function startPanelResize(
   window.addEventListener("pointermove", onPointerMove);
   window.addEventListener("pointerup", onPointerUp);
   window.addEventListener("pointercancel", onPointerUp);
+}
+
+function getLessonRequirementStates(
+  lesson: Lesson,
+  query: VisualQuery,
+  result: QueryResult | null,
+): Array<{ requirement: LessonRequirement; state: RequirementState }> {
+  const currentJoinedTableIds = getJoinedTableIds(query, commerceSchema);
+  const report = getLessonValidationReport(result, lesson.expectedResult);
+
+  return lesson.requirements.map((requirement) => ({
+    requirement,
+    state: getRequirementState(requirement, query, currentJoinedTableIds, result, report),
+  }));
+}
+
+function getRequirementState(
+  requirement: LessonRequirement,
+  query: VisualQuery,
+  joinedTableIds: string[],
+  result: QueryResult | null,
+  report: LessonValidationReport,
+): RequirementState {
+  if (requirement.type === "base-table") {
+    return query.baseTableId === requirement.tableId ? "complete" : "incomplete";
+  }
+
+  if (requirement.type === "selected-columns") {
+    return sameColumnList(query.selectedColumns, requirement.columns) ? "complete" : "incomplete";
+  }
+
+  if (requirement.type === "joined-tables") {
+    return requirement.tableIds.every((tableId) => joinedTableIds.includes(tableId))
+      ? "complete"
+      : "incomplete";
+  }
+
+  if (requirement.type === "filters") {
+    return requirement.filters.every((requiredFilter) =>
+      query.filters.some(
+        (filter) =>
+          sameColumn(filter, requiredFilter) &&
+          filter.operator === requiredFilter.operator &&
+          filter.value.trim() === requiredFilter.value,
+      ),
+    )
+      ? "complete"
+      : "incomplete";
+  }
+
+  if (requirement.type === "sort") {
+    return query.sort &&
+      sameColumn(query.sort, requirement.sort) &&
+      query.sort.direction === requirement.sort.direction
+      ? "complete"
+      : "incomplete";
+  }
+
+  if (requirement.type === "limit") {
+    return query.limit?.value === requirement.value ? "complete" : "incomplete";
+  }
+
+  if (!result) {
+    return "needs-preview";
+  }
+
+  return report.passed ? "complete" : "incomplete";
+}
+
+function sameColumnList(left: ColumnRef[], right: ColumnRef[]) {
+  return left.length === right.length && left.every((column, index) => sameColumn(column, right[index]));
+}
+
+function formatRows(rows: QueryResult["rows"]) {
+  return rows.map(formatRow).join("; ");
+}
+
+function formatRow(row: QueryResult["rows"][number]) {
+  return `[${row.map((value) => (value === null ? "NULL" : String(value))).join(", ")}]`;
 }
 
 function clamp(value: number, min: number, max: number) {

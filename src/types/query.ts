@@ -74,6 +74,58 @@ export type LessonExpectedResult = {
   rows: Array<Array<string | number | null>>;
 };
 
+export type RequirementState = "complete" | "incomplete" | "needs-preview";
+
+export type LessonRequirement =
+  | {
+      id: string;
+      type: "base-table";
+      label: string;
+      tip: string;
+      tableId: string;
+    }
+  | {
+      id: string;
+      type: "selected-columns";
+      label: string;
+      tip: string;
+      columns: SelectedColumn[];
+    }
+  | {
+      id: string;
+      type: "joined-tables";
+      label: string;
+      tip: string;
+      tableIds: string[];
+    }
+  | {
+      id: string;
+      type: "filters";
+      label: string;
+      tip: string;
+      filters: FilterSpec[];
+    }
+  | {
+      id: string;
+      type: "sort";
+      label: string;
+      tip: string;
+      sort: SortSpec;
+    }
+  | {
+      id: string;
+      type: "limit";
+      label: string;
+      tip: string;
+      value: number;
+    }
+  | {
+      id: string;
+      type: "expected-result";
+      label: string;
+      tip: string;
+    };
+
 export type LessonHint = {
   title: string;
   body: string;
@@ -84,6 +136,7 @@ export type Lesson = {
   title: string;
   goal: string;
   tips: LessonHint[];
+  requirements: LessonRequirement[];
   expectedResult: LessonExpectedResult;
 };
 
