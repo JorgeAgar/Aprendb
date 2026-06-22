@@ -10,9 +10,9 @@ export const commerceSchema: Schema = {
       position: { x: 60, y: 70 },
       columns: [
         { id: "id", name: "id", label: "id", type: "integer", role: "pk" },
-        { id: "name", name: "name", label: "name", type: "text" },
-        { id: "email", name: "email", label: "email", type: "text" },
-        { id: "city", name: "city", label: "city", type: "text" },
+        { id: "name", name: "name", label: "name", type: "text", sampleValues: ["Ava Chen", "Mateo Ruiz"] },
+        { id: "email", name: "email", label: "email", type: "text", sampleValues: ["ava@example.com"] },
+        { id: "city", name: "city", label: "city", type: "text", sampleValues: ["Bogota", "Medellin", "Cali"] },
       ],
     },
     {
@@ -24,9 +24,9 @@ export const commerceSchema: Schema = {
       columns: [
         { id: "id", name: "id", label: "id", type: "integer", role: "pk" },
         { id: "customer_id", name: "customer_id", label: "customer_id", type: "integer", role: "fk" },
-        { id: "order_date", name: "order_date", label: "order_date", type: "text" },
-        { id: "status", name: "status", label: "status", type: "text" },
-        { id: "total", name: "total", label: "total", type: "real" },
+        { id: "order_date", name: "order_date", label: "order_date", type: "text", sampleValues: ["2026-01-12"] },
+        { id: "status", name: "status", label: "status", type: "text", sampleValues: ["paid", "pending", "refunded"] },
+        { id: "total", name: "total", label: "total", type: "real", sampleValues: [129.99, 310] },
       ],
     },
     {
@@ -39,7 +39,7 @@ export const commerceSchema: Schema = {
         { id: "id", name: "id", label: "id", type: "integer", role: "pk" },
         { id: "order_id", name: "order_id", label: "order_id", type: "integer", role: "fk" },
         { id: "product_id", name: "product_id", label: "product_id", type: "integer", role: "fk" },
-        { id: "quantity", name: "quantity", label: "quantity", type: "integer" },
+        { id: "quantity", name: "quantity", label: "quantity", type: "integer", sampleValues: [1, 2, 4] },
       ],
     },
     {
@@ -50,9 +50,9 @@ export const commerceSchema: Schema = {
       position: { x: 1050, y: 205 },
       columns: [
         { id: "id", name: "id", label: "id", type: "integer", role: "pk" },
-        { id: "name", name: "name", label: "name", type: "text" },
-        { id: "category", name: "category", label: "category", type: "text" },
-        { id: "price", name: "price", label: "price", type: "real" },
+        { id: "name", name: "name", label: "name", type: "text", sampleValues: ["SQL Workbook", "Query Hoodie"] },
+        { id: "category", name: "category", label: "category", type: "text", sampleValues: ["Books", "Apparel", "Office"] },
+        { id: "price", name: "price", label: "price", type: "real", sampleValues: [29.99, 48.5] },
       ],
     },
     {
@@ -64,8 +64,8 @@ export const commerceSchema: Schema = {
       columns: [
         { id: "id", name: "id", label: "id", type: "integer", role: "pk" },
         { id: "order_id", name: "order_id", label: "order_id", type: "integer", role: "fk" },
-        { id: "method", name: "method", label: "method", type: "text" },
-        { id: "amount", name: "amount", label: "amount", type: "real" },
+        { id: "method", name: "method", label: "method", type: "text", sampleValues: ["card", "bank_transfer"] },
+        { id: "amount", name: "amount", label: "amount", type: "real", sampleValues: [129.99, 310] },
       ],
     },
   ],

@@ -6,6 +6,7 @@ export type SchemaColumn = {
   label: string;
   type: ColumnType;
   role?: "pk" | "fk";
+  sampleValues?: Array<string | number>;
 };
 
 export type SchemaTable = {
