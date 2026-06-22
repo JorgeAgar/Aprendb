@@ -74,6 +74,12 @@ Run the TypeScript project checks before opening a pull request, especially afte
 pnpm typecheck
 ```
 
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Extending lessons and schema](docs/extending-lessons-and-schema.md)
+- [Query generation](docs/query-generation.md)
+
 ## Troubleshooting
 
 ### Dependency install issues
