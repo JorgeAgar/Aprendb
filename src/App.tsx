@@ -25,7 +25,7 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
+import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { commerceSchema } from "@/data/schema";
@@ -74,6 +74,7 @@ type QueryStatus =
   | { kind: "error"; message: string };
 
 type ColumnQuickAction = "select" | "filter" | "sort";
+type MobileTab = "lessons" | "graph" | "sql" | "results" | "query";
 
 type SchemaNodeData = {
   table: SchemaTable;
@@ -96,6 +97,13 @@ const minLeftPanelWidth = 220;
 const maxLeftPanelWidth = 520;
 const minRightPanelWidth = 300;
 const maxRightPanelWidth = 680;
+const mobileTabs: Array<{ id: MobileTab; label: string }> = [
+  { id: "lessons", label: "Lessons" },
+  { id: "graph", label: "Graph" },
+  { id: "sql", label: "SQL" },
+  { id: "results", label: "Results" },
+  { id: "query", label: "Query" },
+];
 
 export function App() {
   const [query, setQuery] = useState<VisualQuery>(() => createEmptyQuery());
@@ -109,6 +117,8 @@ export function App() {
   const [actionMenu, setActionMenu] = useState<ActionMenu | null>(null);
   const [leftPanelWidth, setLeftPanelWidth] = useState(300);
   const [rightPanelWidth, setRightPanelWidth] = useState(400);
+  const [isLessonPanelOpen, setIsLessonPanelOpen] = useState(false);
+  const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>("graph");
 
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) ?? lessons[0];
   const joinedTableIds = useMemo(() => getJoinedTableIds(query, commerceSchema), [query]);
@@ -293,10 +303,148 @@ export function App() {
     resizePanelWithKeyboard(event, setRightPanelWidth, minRightPanelWidth, maxRightPanelWidth, true);
   }
 
+  const workspaceStyle = {
+    "--left-panel-width": `${leftPanelWidth}px`,
+    "--right-panel-width": `${rightPanelWidth}px`,
+    "--lesson-panel-width": isLessonPanelOpen ? "min(320px, 38vw)" : "56px",
+  } as CSSProperties;
+
+  const lessonPanel = (
+    <aside className="lesson-panel min-h-0 overflow-auto border-r border-border bg-sidebar p-4">
+      <div className="mb-4 flex items-center gap-2 text-sm font-medium">
+        <CursorArrowRaysIcon className="size-4 text-primary" aria-hidden="true" />
+        <span className="lesson-panel-label">Lessons</span>
+      </div>
+      <div className="space-y-2">
+        {lessons.map((lesson, index) => {
+          const isActive = lesson.id === activeLesson?.id;
+          const isPassed = passedLessonIds.includes(lesson.id);
+
+          return (
+            <button
+              key={lesson.id}
+              className={cn(
+                "lesson-card w-full rounded-md border p-3 text-left text-sm transition-colors",
+                isActive ? "border-primary bg-primary/10" : "border-border bg-background hover:bg-accent",
+              )}
+              onClick={() => chooseLesson(lesson.id)}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="lesson-title font-medium text-foreground">
+                  {index + 1}. {lesson.title}
+                </span>
+                {isPassed ? <CheckCircleIcon className="size-4 shrink-0 text-primary" aria-hidden="true" /> : null}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{lesson.goal}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      {activeLesson ? (
+        <div className="lesson-details mt-5 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold">Current Goal</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{activeLesson.goal}</p>
+          </div>
+          <LessonChecklist requirements={requirementStates} highlightFirstAction={!query.baseTableId} />
+          <div className="space-y-2 border-t border-border pt-3">
+            <h2 className="text-xs font-semibold uppercase text-muted-foreground">Tips</h2>
+            {activeLesson.tips.map((tip) => (
+              <div key={tip.title} className="rounded-md border border-border bg-background p-3">
+                <div className="text-xs font-semibold uppercase text-primary">{tip.title}</div>
+                <p className="mt-1 text-xs text-muted-foreground">{tip.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </aside>
+  );
+
+  const graphPanel = (showResizers: boolean) => (
+    <section className="graph-panel relative min-h-0 bg-canvas">
+      {showResizers ? (
+        <>
+          <PanelResizeHandle
+            ariaLabel="Resize lessons panel"
+            className="left-0"
+            maxValue={maxLeftPanelWidth}
+            minValue={minLeftPanelWidth}
+            onPointerDown={startLeftPanelResize}
+            onKeyDown={resizeLeftPanelWithKeyboard}
+            value={leftPanelWidth}
+          />
+          <PanelResizeHandle
+            ariaLabel="Resize query output panel"
+            className="right-0 translate-x-1/2"
+            maxValue={maxRightPanelWidth}
+            minValue={minRightPanelWidth}
+            onPointerDown={startRightPanelResize}
+            onKeyDown={resizeRightPanelWithKeyboard}
+            value={rightPanelWidth}
+          />
+        </>
+      ) : null}
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        fitView
+        minZoom={0.45}
+        maxZoom={1.4}
+        nodesDraggable
+        nodesConnectable={false}
+        elementsSelectable={false}
+        onPaneClick={() => setActionMenu(null)}
+      >
+        <Background gap={28} color="oklch(0.8 0.01 248 / 0.45)" />
+        <MiniMap pannable zoomable nodeStrokeWidth={3} />
+        <Controls position="bottom-left" />
+      </ReactFlow>
+      {!query.baseTableId ? (
+        <CanvasEmptyState
+          activeLesson={activeLesson}
+          suggestedTableId={suggestedStartTableId}
+          onStartTable={startFromTable}
+        />
+      ) : null}
+      <RelationshipLegend hasBaseTable={Boolean(query.baseTableId)} />
+      {actionMenu ? (
+        <ActionMenuPanel
+          actionMenu={actionMenu}
+          query={query}
+          joinedTableIds={joinedTableIds}
+          onClose={() => setActionMenu(null)}
+          onQueryChange={updateQuery}
+        />
+      ) : null}
+    </section>
+  );
+
+  const queryControls = (
+    <div className="query-actions grid gap-3 border-t border-border bg-card p-3">
+      <LimitControl query={query} onQueryChange={updateQuery} />
+      <Button className="w-full" onClick={previewResult} disabled={!query.baseTableId}>
+        <PlayIcon aria-hidden="true" />
+        Preview Result
+      </Button>
+    </div>
+  );
+
+  const outputPanel = (
+    <aside className="output-panel grid h-full min-h-0 overflow-hidden border-l border-border bg-card">
+      <StatusPanel status={status} />
+      <SqlPanel sql={sql} />
+      <ResultPanel result={result} expected={activeLesson?.expectedResult ?? null} report={validationReport} />
+      {queryControls}
+    </aside>
+  );
+
   return (
-    <main className="h-screen overflow-hidden bg-background text-foreground">
+    <main className="h-dvh overflow-hidden bg-background text-foreground">
       <section className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]">
-        <header className="flex items-center justify-between border-b border-border bg-card px-5 py-3">
+        <header className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 md:px-5">
           <div className="flex items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <CircleStackIcon className="size-5" aria-hidden="true" />
@@ -306,7 +454,7 @@ export function App() {
               <p className="text-xs text-muted-foreground">Visual SQL lesson sandbox</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <Button variant="outline" size="sm" onClick={resetCurrentQuery}>
               <ArrowPathIcon aria-hidden="true" />
               Reset
@@ -318,139 +466,58 @@ export function App() {
           </div>
         </header>
 
-        <div
-          className="grid min-h-0"
-          style={{ gridTemplateColumns: `${leftPanelWidth}px minmax(320px, 1fr) ${rightPanelWidth}px` }}
-        >
-          <aside className="min-h-0 overflow-auto border-r border-border bg-sidebar p-4">
-            <div className="mb-4 flex items-center gap-2 text-sm font-medium">
-              <CursorArrowRaysIcon className="size-4 text-primary" aria-hidden="true" />
-              Lessons
-            </div>
-            <div className="space-y-2">
-              {lessons.map((lesson, index) => {
-                const isActive = lesson.id === activeLesson?.id;
-                const isPassed = passedLessonIds.includes(lesson.id);
-
-                return (
-                  <button
-                    key={lesson.id}
-                    className={cn(
-                      "w-full rounded-md border p-3 text-left text-sm transition-colors",
-                      isActive
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-background hover:bg-accent",
-                    )}
-                    onClick={() => chooseLesson(lesson.id)}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-foreground">
-                        {index + 1}. {lesson.title}
-                      </span>
-                      {isPassed ? <CheckCircleIcon className="size-4 text-primary" aria-hidden="true" /> : null}
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{lesson.goal}</p>
-                  </button>
-                );
-              })}
-            </div>
-
-            {activeLesson ? (
-              <div className="mt-5 space-y-3">
-                <div>
-                  <h2 className="text-sm font-semibold">Current Goal</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{activeLesson.goal}</p>
-                </div>
-                <LessonChecklist
-                  requirements={requirementStates}
-                  highlightFirstAction={!query.baseTableId}
-                />
-                <div className="space-y-2 border-t border-border pt-3">
-                  <h2 className="text-xs font-semibold uppercase text-muted-foreground">Tips</h2>
-                  {activeLesson.tips.map((tip) => (
-                    <div key={tip.title} className="rounded-md border border-border bg-background p-3">
-                      <div className="text-xs font-semibold uppercase text-primary">{tip.title}</div>
-                      <p className="mt-1 text-xs text-muted-foreground">{tip.body}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </aside>
-
-          <section className="relative min-h-0 bg-canvas">
-            <PanelResizeHandle
-              ariaLabel="Resize lessons panel"
-              className="left-0"
-              maxValue={maxLeftPanelWidth}
-              minValue={minLeftPanelWidth}
-              onPointerDown={startLeftPanelResize}
-              onKeyDown={resizeLeftPanelWithKeyboard}
-              value={leftPanelWidth}
-            />
-            <PanelResizeHandle
-              ariaLabel="Resize query output panel"
-              className="right-0 translate-x-1/2"
-              maxValue={maxRightPanelWidth}
-              minValue={minRightPanelWidth}
-              onPointerDown={startRightPanelResize}
-              onKeyDown={resizeRightPanelWithKeyboard}
-              value={rightPanelWidth}
-            />
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              nodeTypes={nodeTypes}
-              fitView
-              minZoom={0.45}
-              maxZoom={1.4}
-              nodesDraggable
-              nodesConnectable={false}
-              elementsSelectable={false}
-              onPaneClick={() => setActionMenu(null)}
+        <div className="app-workspace hidden min-h-0 md:grid" style={workspaceStyle}>
+          <div className="relative min-h-0" data-lesson-open={isLessonPanelOpen}>
+            <button
+              className="lesson-toggle absolute right-2 top-2 z-30 hidden size-9 items-center justify-center rounded-md border border-border bg-background text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              type="button"
+              aria-label={isLessonPanelOpen ? "Collapse lessons panel" : "Expand lessons panel"}
+              aria-expanded={isLessonPanelOpen}
+              onClick={() => setIsLessonPanelOpen((current) => !current)}
             >
-              <Background gap={28} color="oklch(0.8 0.01 248 / 0.45)" />
-              <MiniMap pannable zoomable nodeStrokeWidth={3} />
-              <Controls position="bottom-left" />
-            </ReactFlow>
-            {!query.baseTableId ? (
-              <CanvasEmptyState
-                activeLesson={activeLesson}
-                suggestedTableId={suggestedStartTableId}
-                onStartTable={startFromTable}
-              />
-            ) : null}
-            <RelationshipLegend hasBaseTable={Boolean(query.baseTableId)} />
-            {actionMenu ? (
-              <ActionMenuPanel
-                actionMenu={actionMenu}
-                query={query}
-                joinedTableIds={joinedTableIds}
-                onClose={() => setActionMenu(null)}
-                onQueryChange={updateQuery}
-              />
-            ) : null}
-          </section>
+              <CursorArrowRaysIcon className="size-4" aria-hidden="true" />
+            </button>
+            {lessonPanel}
+          </div>
+          {graphPanel(true)}
+          {outputPanel}
+        </div>
 
-          <aside className="grid h-full min-h-0 overflow-hidden border-l border-border bg-card [grid-template-rows:auto_minmax(0,0.72fr)_minmax(0,1fr)_auto]">
-            <StatusPanel status={status} />
-            <SqlPanel sql={sql} />
-            <ResultPanel
-              result={result}
-              expected={activeLesson?.expectedResult ?? null}
-              report={validationReport}
-            />
-            <div className="grid gap-3 border-t border-border bg-card p-3">
-              <LimitControl
-                query={query}
-                onQueryChange={updateQuery}
-              />
-              <Button className="w-full" onClick={previewResult} disabled={!query.baseTableId}>
-                <PlayIcon aria-hidden="true" />
-                Preview Result
-              </Button>
+        <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] md:hidden">
+          <nav className="overflow-x-auto border-b border-border bg-card px-2 py-2" aria-label="Workspace views">
+            <div className="grid min-w-max grid-cols-5 gap-1">
+              {mobileTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={cn(
+                    "rounded-md px-3 py-2 text-xs font-semibold transition-colors",
+                    activeMobileTab === tab.id
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                  type="button"
+                  onClick={() => setActiveMobileTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-          </aside>
+          </nav>
+          <div className="min-h-0 overflow-hidden">
+            {activeMobileTab === "lessons" ? lessonPanel : null}
+            {activeMobileTab === "graph" ? graphPanel(false) : null}
+            {activeMobileTab === "sql" ? <SqlPanel sql={sql} /> : null}
+            {activeMobileTab === "results" ? (
+              <ResultPanel result={result} expected={activeLesson?.expectedResult ?? null} report={validationReport} />
+            ) : null}
+            {activeMobileTab === "query" ? (
+              <aside className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-auto bg-card">
+                <StatusPanel status={status} />
+                <div className="min-h-0" />
+                {queryControls}
+              </aside>
+            ) : null}
+          </div>
         </div>
       </section>
     </main>
@@ -966,7 +1033,7 @@ function StatusPanel({ status }: { status: QueryStatus }) {
         ) : (
           <CursorArrowRaysIcon className="mt-0.5 size-5 text-primary" aria-hidden="true" />
         )}
-        <div>
+        <div className="min-w-0">
           <h2 className="text-sm font-semibold">Lesson Status</h2>
           <p className="mt-1 text-xs text-muted-foreground">{status.message}</p>
         </div>
@@ -977,13 +1044,13 @@ function StatusPanel({ status }: { status: QueryStatus }) {
 
 function SqlPanel({ sql }: { sql: string }) {
   return (
-    <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border-b border-border">
+    <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] border-b border-border">
       <div className="border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold">Generated SQL</h2>
       </div>
-      <pre className="min-h-0 overflow-auto whitespace-pre-wrap p-4 text-sm leading-6 [overflow-wrap:anywhere]">
+      <pre className="min-h-0 min-w-0 max-w-full overflow-auto whitespace-pre-wrap p-4 text-sm leading-6 [overflow-wrap:anywhere]">
         {sql.split("\n").map((line, index) => (
-          <code key={`${index}-${line}`} className="block rounded px-2 font-mono text-foreground">
+          <code key={`${index}-${line}`} className="block min-w-0 rounded px-2 font-mono text-foreground [overflow-wrap:anywhere]">
             {line}
           </code>
         ))}
@@ -1002,10 +1069,10 @@ function ResultPanel({
   report: LessonValidationReport | null;
 }) {
   return (
-    <div className="min-h-0 overflow-auto border-b border-border p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <div className="result-scroll h-full min-h-0 min-w-0 overflow-auto border-b border-border p-4">
+      <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">Result Preview</h2>
-        <span className="text-xs text-muted-foreground">
+        <span className="shrink-0 text-xs text-muted-foreground">
           Expected: {expected ? `${expected.rows.length} rows` : "none"}
         </span>
       </div>
@@ -1082,7 +1149,7 @@ function ResultFeedback({
 
 function ResultTable({ result }: { result: QueryResult }) {
   return (
-    <table className="w-full border-collapse text-left text-xs">
+    <table className="result-table w-full border-collapse text-left text-xs">
       <thead>
         <tr>
           {result.columns.map((column) => (
@@ -1119,7 +1186,7 @@ function LimitControl({
       <div className="grid grid-cols-[58px_1fr_auto] items-center gap-2">
         <span className="font-semibold text-foreground">LIMIT</span>
         <input
-          className="h-8 rounded-md border border-input bg-background px-2"
+          className="h-8 min-w-0 rounded-md border border-input bg-background px-2"
           type="number"
           min={1}
           placeholder="none"
