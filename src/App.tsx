@@ -31,7 +31,6 @@ import {
   addBaseTable,
   addJoin,
   createEmptyQuery,
-  describeJoin,
   findColumn,
   findTable,
   formatColumnRef,
@@ -365,17 +364,15 @@ export function App() {
             <StatusPanel status={status} />
             <SqlPanel sql={sql} />
             <ResultPanel result={result} expected={activeLesson?.expectedResult ?? null} />
-            <div className="grid max-h-44 min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-3 overflow-hidden border-t border-border bg-card p-3">
-              <div className="min-h-0 overflow-auto pr-1">
-                <QuerySummary
-                  query={query}
-                  onQueryChange={(nextQuery) => {
-                    setQuery(nextQuery);
-                    setResult(null);
-                    setStatus({ kind: "idle", message: "Query changed. Preview the result when ready." });
-                  }}
-                />
-              </div>
+            <div className="grid gap-3 border-t border-border bg-card p-3">
+              <LimitControl
+                query={query}
+                onQueryChange={(nextQuery) => {
+                  setQuery(nextQuery);
+                  setResult(null);
+                  setStatus({ kind: "idle", message: "Query changed. Preview the result when ready." });
+                }}
+              />
               <Button className="w-full" onClick={previewResult} disabled={!query.baseTableId}>
                 <PlayIcon aria-hidden="true" />
                 Preview Result
@@ -786,21 +783,15 @@ function ResultTable({ result }: { result: QueryResult }) {
   );
 }
 
-function QuerySummary({
+function LimitControl({
   query,
   onQueryChange,
 }: {
   query: VisualQuery;
   onQueryChange: (nextQuery: VisualQuery) => void;
 }) {
-  const selected = query.selectedColumns.map((column) => formatColumnRef(commerceSchema, column));
-  const joins = query.joins.map((join) => describeJoin(commerceSchema, join));
-
   return (
     <div className="grid gap-2 text-xs text-muted-foreground">
-      <SummaryLine label="FROM" value={query.baseTableId ? findTable(commerceSchema, query.baseTableId)?.name : "none"} />
-      <SummaryLine label="SELECT" value={selected.length ? selected.join(", ") : "none"} />
-      <SummaryLine label="JOIN" value={joins.length ? joins.join(" · ") : "none"} />
       <div className="grid grid-cols-[58px_1fr_auto] items-center gap-2">
         <span className="font-semibold text-foreground">LIMIT</span>
         <input
@@ -816,15 +807,6 @@ function QuerySummary({
         />
         <span>{query.limit?.value ?? "unset"}</span>
       </div>
-    </div>
-  );
-}
-
-function SummaryLine({ label, value }: { label: string; value?: string }) {
-  return (
-    <div className="grid grid-cols-[58px_1fr] gap-2">
-      <span className="font-semibold text-foreground">{label}</span>
-      <span className="truncate">{value}</span>
     </div>
   );
 }

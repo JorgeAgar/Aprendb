@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AprenDB UI/UX Improvement Plan</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8f4;
+        --panel: #ffffff;
+        --ink: #1e2935;
+        --muted: #61717f;
+        --border: #d7dedc;
+        --primary: #168064;
+        --primary-soft: #dff4ec;
+        --accent: #eaf2f7;
+        --warning: #fff2d2;
+        --danger: #ffe2df;
+        --code: #eef2f3;
+        --shadow: 0 10px 30px rgba(27, 45, 56, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        line-height: 1.5;
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 36px 0 56px;
+      }
+
+      header {
+        display: grid;
+        gap: 14px;
+        padding: 28px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        line-height: 1.2;
+      }
+
+      h1 {
+        max-width: 780px;
+        font-size: clamp(2rem, 5vw, 4rem);
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: 1.45rem;
+      }
+
+      h3 {
+        font-size: 1rem;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      a {
+        color: var(--primary);
+        font-weight: 700;
+      }
+
+      .lede {
+        max-width: 780px;
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--accent);
+        color: var(--ink);
+        font-size: 0.85rem;
+        font-weight: 700;
+      }
+
+      .section {
+        margin-top: 22px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .section-head {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .section-head p {
+        max-width: 830px;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .two-col {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .three-col {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .card {
+        display: grid;
+        gap: 10px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fbfdfc;
+      }
+
+      .card.primary {
+        border-color: rgba(22, 128, 100, 0.28);
+        background: var(--primary-soft);
+      }
+
+      .card.warning {
+        background: var(--warning);
+      }
+
+      .card.danger {
+        background: var(--danger);
+      }
+
+      ul,
+      ol {
+        margin: 0;
+        padding-left: 1.2rem;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      code {
+        padding: 0.12rem 0.32rem;
+        border-radius: 4px;
+        background: var(--code);
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.94rem;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: var(--accent);
+        font-size: 0.8rem;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 16px;
+      }
+
+      .phase {
+        display: grid;
+        grid-template-columns: 120px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+
+      .phase-label {
+        position: sticky;
+        top: 16px;
+        display: grid;
+        gap: 4px;
+        padding: 12px;
+        border-radius: 8px;
+        background: var(--primary);
+        color: #fff;
+        font-weight: 800;
+      }
+
+      .phase-label span {
+        font-size: 0.8rem;
+        font-weight: 600;
+        opacity: 0.88;
+      }
+
+      .task-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .task {
+        display: grid;
+        gap: 8px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .task-title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+      }
+
+      .tag {
+        display: inline-flex;
+        min-height: 22px;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: var(--muted);
+        font-size: 0.75rem;
+        font-weight: 800;
+      }
+
+      .tag.must {
+        background: var(--primary-soft);
+        color: var(--primary);
+      }
+
+      .tag.risk {
+        background: var(--warning);
+        color: #7a5200;
+      }
+
+      .checklist {
+        display: grid;
+        gap: 8px;
+        padding-left: 0;
+        list-style: none;
+      }
+
+      .checklist li {
+        position: relative;
+        padding-left: 28px;
+      }
+
+      .checklist li::before {
+        content: "";
+        position: absolute;
+        top: 0.35rem;
+        left: 0;
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--primary);
+        border-radius: 4px;
+        background: #fff;
+      }
+
+      .file-map {
+        display: grid;
+        gap: 10px;
+      }
+
+      .file-row {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 12px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fbfdfc;
+      }
+
+      .small {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 880px) {
+        main {
+          width: min(100% - 20px, 1180px);
+          padding-top: 16px;
+        }
+
+        header,
+        .section {
+          padding: 18px;
+        }
+
+        .two-col,
+        .three-col,
+        .phase,
+        .file-row {
+          grid-template-columns: 1fr;
+        }
+
+        .phase-label {
+          position: static;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="meta">
+          <span class="pill">AprenDB</span>
+          <span class="pill">UI/UX implementation plan</span>
+          <span class="pill">Proposed PR sequence</span>
+        </div>
+        <h1>Make AprenDB feel like a visual SQL tutor</h1>
+        <p class="lede">
+          This plan turns the current visual query sandbox into a clearer learning experience. The
+          work is split into focused PRs so the team can ship user-visible value early while keeping
+          review and testing manageable.
+        </p>
+      </header>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Product Goals</h2>
+          <p>
+            The app already has a strong foundation: schema graph, generated SQL, lesson goals, and
+            result validation. These changes should make the next step obvious, explain failures, and
+            reduce hidden interactions.
+          </p>
+        </div>
+        <div class="grid three-col">
+          <article class="card primary">
+            <h3>Teach while building</h3>
+            <p>
+              Replace generic status messages with live lesson progress and specific feedback tied to
+              <code>FROM</code>, <code>SELECT</code>, <code>JOIN</code>, <code>WHERE</code>,
+              <code>ORDER BY</code>, and <code>LIMIT</code>.
+            </p>
+          </article>
+          <article class="card primary">
+            <h3>Reveal available actions</h3>
+            <p>
+              Make table and column actions discoverable without relying on trial-and-error clicks or
+              context menus.
+            </p>
+          </article>
+          <article class="card primary">
+            <h3>Fit real working screens</h3>
+            <p>
+              Keep the graph, lesson, SQL, and result areas usable on laptop and tablet-sized
+              screens through responsive panels and stable layouts.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Recommended PR Breakdown</h2>
+          <p>
+            Build in this order. Each PR has a coherent product outcome and can be reviewed without
+            requiring the later work.
+          </p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>PR</th>
+              <th>Theme</th>
+              <th>User outcome</th>
+              <th>Primary files</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Learning feedback</td>
+              <td>Users know which lesson requirements are complete and why a result failed.</td>
+              <td>
+                <code>src/App.tsx</code>, <code>src/lib/validation.ts</code>,
+                <code>src/types/query.ts</code>
+              </td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Interaction discoverability</td>
+              <td>Users can see what to click next and apply actions with less hidden menu work.</td>
+              <td><code>src/App.tsx</code>, <code>src/data/schema.ts</code></td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Responsive layout</td>
+              <td>The app remains usable below the current fixed desktop width.</td>
+              <td><code>src/App.tsx</code>, <code>src/index.css</code></td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Workflow polish</td>
+              <td>Users can move faster with copy SQL, next lesson, and keyboard shortcuts.</td>
+              <td><code>src/App.tsx</code>, focused component helpers as needed</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Implementation Timeline</h2>
+          <p>
+            Each phase includes implementation tasks, acceptance criteria, and test notes. Keep
+            commits small inside each PR so behavior changes are easy to inspect.
+          </p>
+        </div>
+
+        <div class="timeline">
+          <article class="phase">
+            <div class="phase-label">PR 1 <span>Learning feedback</span></div>
+            <div class="task-list">
+              <div class="task">
+                <div class="task-title">
+                  Add a lesson requirement model
+                  <span class="tag must">Must have</span>
+                </div>
+                <p>
+                  Represent lesson goals as explicit requirements instead of only prose tips. Start
+                  with a lightweight model derived from the current lesson data.
+                </p>
+                <ul>
+                  <li>
+                    Add optional <code>requirements</code> metadata to lessons or create a helper
+                    that derives requirements from known lesson IDs.
+                  </li>
+                  <li>
+                    Support requirement types: base table, selected columns, joined tables, filters,
+                    sort, limit, and expected result.
+                  </li>
+                  <li>
+                    Return requirement state as <code>complete</code>, <code>incomplete</code>, or
+                    <code>needs-preview</code>.
+                  </li>
+                </ul>
+              </div>
+
+              <div class="task">
+                <div class="task-title">
+                  Render live lesson checklist
+                  <span class="tag must">Must have</span>
+                </div>
+                <p>
+                  Replace or supplement the current static tips with a checklist that updates as the
+                  visual query changes.
+                </p>
+                <ul>
+                  <li>Show completion state with text and an icon, not color alone.</li>
+                  <li>Keep tips visible as secondary guidance for each requirement.</li>
+                  <li>When no query exists, highlight the first recommended action.</li>
+                </ul>
+              </div>
+
+              <div class="task">
+                <div class="task-title">
+                  Add actual vs expected result diagnostics
+                  <span class="tag must">Must have</span>
+                </div>
+                <p>
+                  Extend validation so failed previews return useful mismatch details instead of only
+                  passing or not passing.
+                </p>
+                <ul>
+                  <li>Report wrong columns, wrong row count, missing rows, extra rows, and order differences.</li>
+                  <li>Render a compact feedback panel above the result table.</li>
+                  <li>Keep exact pass behavior unchanged for lessons that already pass.</li>
+                </ul>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Acceptance criteria</div>
+                <ul class="checklist">
+                  <li>Each current lesson shows at least two live requirements.</li>
+                  <li>Changing selected columns or joins updates the checklist immediately.</li>
+                  <li>A wrong query preview explains at least one concrete mismatch.</li>
+                  <li>Existing tests pass, and new tests cover validation diagnostics.</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="phase">
+            <div class="phase-label">PR 2 <span>Discoverability</span></div>
+            <div class="task-list">
+              <div class="task">
+                <div class="task-title">
+                  Add canvas empty state
+                  <span class="tag must">Must have</span>
+                </div>
+                <p>
+                  When <code>query.baseTableId</code> is empty, show an unobtrusive overlay that
+                  guides the user to choose a starting table.
+                </p>
+                <ul>
+                  <li>Use the active lesson to suggest the most likely starting table.</li>
+                  <li>Provide one-click table start buttons.</li>
+                  <li>Hide the overlay as soon as a base table is selected.</li>
+                </ul>
+              </div>
+
+              <div class="task">
+                <div class="task-title">
+                  Make column actions visible
+                  <span class="tag must">Must have</span>
+                </div>
+                <p>
+                  Keep the action menu, but add inline affordances so users understand that columns
+                  can be selected, filtered, or sorted.
+                </p>
+                <ul>
+                  <li>Add small hover/focus icons for add-to-result, filter, and sort actions.</li>
+                  <li>Preserve the current click target for users who already discovered it.</li>
+                  <li>Ensure controls are keyboard reachable.</li>
+                </ul>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Add filter value hints</div>
+                <p>
+                  Add optional sample values to schema columns, then show them in the filter UI.
+                  Example: <code>orders.status</code> can suggest <code>paid</code>,
+                  <code>pending</code>, and <code>refunded</code>.
+                </p>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Add relationship legend</div>
+                <p>
+                  Explain graph edge states: joined, available, and unavailable. Keep the legend
+                  compact and visually tied to the existing edge colors.
+                </p>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Acceptance criteria</div>
+                <ul class="checklist">
+                  <li>A new user can start lesson 1 without opening a hidden menu first.</li>
+                  <li>Column actions are visible on hover and reachable by keyboard.</li>
+                  <li>Filter hints appear for columns with known sample values.</li>
+                  <li>Graph relationship states are explained on screen.</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="phase">
+            <div class="phase-label">PR 3 <span>Layout</span></div>
+            <div class="task-list">
+              <div class="task">
+                <div class="task-title">
+                  Remove fixed body minimum width
+                  <span class="tag must">Must have</span>
+                  <span class="tag risk">Layout risk</span>
+                </div>
+                <p>
+                  Replace <code>body { min-width: 1024px; }</code> with responsive rules. This is the
+                  main layout constraint currently preventing smaller screens from working.
+                </p>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Introduce collapsible or tabbed side panels</div>
+                <p>
+                  Preserve the three-pane desktop experience, then switch to a more compact mode on
+                  narrower screens.
+                </p>
+                <ul>
+                  <li>Desktop: lessons left, graph center, SQL/result right.</li>
+                  <li>Medium screens: collapsible lesson panel, graph center, right panel visible.</li>
+                  <li>Small screens: tabs for Lessons, Graph, SQL, Results, and Query.</li>
+                </ul>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Stabilize result table and SQL panel</div>
+                <ul>
+                  <li>Add sticky result headers.</li>
+                  <li>Ensure generated SQL wraps without pushing the panel wider.</li>
+                  <li>Keep Preview Result button visible in the active query panel.</li>
+                </ul>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Acceptance criteria</div>
+                <ul class="checklist">
+                  <li>The app is usable at 390px, 768px, 1024px, and 1440px viewport widths.</li>
+                  <li>No text overlaps panel boundaries or buttons.</li>
+                  <li>The graph remains pannable and zoomable in each layout mode.</li>
+                  <li>Preview Result is always reachable without horizontal scrolling.</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="phase">
+            <div class="phase-label">PR 4 <span>Polish</span></div>
+            <div class="task-list">
+              <div class="task">
+                <div class="task-title">Add Next lesson flow</div>
+                <p>
+                  After a lesson passes, show a clear next action. If the user is on the last lesson,
+                  show a completion state.
+                </p>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Add Copy SQL</div>
+                <p>
+                  Add a copy button to the generated SQL panel with copied/error feedback. Use the
+                  Clipboard API with a fallback message if unavailable.
+                </p>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Clarify query reset actions</div>
+                <p>
+                  <code>Reset</code> and <code>New Query</code> currently perform the same action.
+                  Keep one primary action or give them distinct meanings.
+                </p>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Add keyboard shortcuts</div>
+                <ul>
+                  <li><code>Escape</code> closes menus and overlays.</li>
+                  <li><code>Ctrl+Enter</code> previews the result.</li>
+                  <li><code>Ctrl+Shift+R</code> resets the current query after confirmation.</li>
+                </ul>
+              </div>
+
+              <div class="task">
+                <div class="task-title">Acceptance criteria</div>
+                <ul class="checklist">
+                  <li>Passing a lesson offers a clear next step.</li>
+                  <li>Generated SQL can be copied with visible feedback.</li>
+                  <li>Duplicate header actions are resolved.</li>
+                  <li>Keyboard shortcuts do not interfere with form input typing.</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Component And File Map</h2>
+          <p>
+            This map shows where the current code is likely to change. Keep new helpers near the
+            existing query and validation modules unless the file becomes difficult to scan.
+          </p>
+        </div>
+        <div class="file-map">
+          <div class="file-row">
+            <strong><code>src/App.tsx</code></strong>
+            <p>
+              Main layout, lesson sidebar, React Flow canvas, action menu, SQL panel, result panel,
+              query summary, and preview behavior. Expect most UI component additions here at first.
+            </p>
+          </div>
+          <div class="file-row">
+            <strong><code>src/data/lessons.ts</code></strong>
+            <p>
+              Add requirement metadata, suggested start tables, and lesson-specific guidance if the
+              team chooses a data-driven checklist model.
+            </p>
+          </div>
+          <div class="file-row">
+            <strong><code>src/data/schema.ts</code></strong>
+            <p>
+              Add optional column sample values, filter hints, or beginner-friendly descriptions for
+              fields like <code>orders.status</code> and <code>payments.method</code>.
+            </p>
+          </div>
+          <div class="file-row">
+            <strong><code>src/lib/validation.ts</code></strong>
+            <p>
+              Extend boolean validation into structured diagnostics while preserving the existing
+              pass/fail function for compatibility.
+            </p>
+          </div>
+          <div class="file-row">
+            <strong><code>src/lib/query-model.ts</code></strong>
+            <p>
+              Reuse existing helpers for joined tables, selected columns, filters, sort, and limit.
+              Add small selectors only when checklist logic needs them.
+            </p>
+          </div>
+          <div class="file-row">
+            <strong><code>src/index.css</code></strong>
+            <p>
+              Update global responsive constraints, theme colors if needed, and layout utility rules.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Suggested Data Shapes</h2>
+          <p>
+            These are starting points, not final API contracts. They are intentionally small so the
+            first PR can land without a large architecture pass.
+          </p>
+        </div>
+        <div class="grid two-col">
+          <article class="card">
+            <h3>Lesson requirement</h3>
+            <pre><code>type LessonRequirement =
+  | { kind: "base-table"; tableId: string; label: string }
+  | { kind: "selected-columns"; columns: ColumnRef[]; label: string }
+  | { kind: "join"; tableIds: string[]; label: string }
+  | { kind: "filter"; column: ColumnRef; value?: string; label: string }
+  | { kind: "sort"; column: ColumnRef; direction: "ASC" | "DESC"; label: string }
+  | { kind: "limit"; value: number; label: string }
+  | { kind: "result"; label: string };</code></pre>
+          </article>
+          <article class="card">
+            <h3>Validation diagnostic</h3>
+            <pre><code>type ResultDiagnostic = {
+  kind:
+    | "wrong-columns"
+    | "missing-rows"
+    | "extra-rows"
+    | "wrong-order"
+    | "row-count";
+  message: string;
+  expected?: unknown;
+  actual?: unknown;
+};</code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Testing Plan</h2>
+          <p>
+            Use unit tests for query and validation behavior, then manually verify the visual flow in
+            the browser because React Flow interactions are central to the experience.
+          </p>
+        </div>
+        <div class="grid two-col">
+          <article class="card">
+            <h3>Automated checks</h3>
+            <ul>
+              <li>Run <code>pnpm test</code> after each PR.</li>
+              <li>Run <code>pnpm typecheck</code> before review.</li>
+              <li>Add tests for structured result diagnostics in <code>validation.test.ts</code>.</li>
+              <li>Add tests for any checklist selector helpers if they live outside React components.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Manual checks</h3>
+            <ul>
+              <li>Complete every lesson from a fresh page load.</li>
+              <li>Intentionally make one wrong query per lesson and confirm feedback is useful.</li>
+              <li>Check mouse and keyboard access to table and column actions.</li>
+              <li>Verify layouts at mobile, tablet, laptop, and desktop widths.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Risks And Decisions</h2>
+          <p>
+            These are the choices most likely to affect scope. Resolve them before or during the
+            first PR to prevent drift.
+          </p>
+        </div>
+        <div class="grid two-col">
+          <article class="card warning">
+            <h3>How data-driven should lessons be?</h3>
+            <p>
+              A requirement model makes future lessons easier, but deriving checklist rules from
+              current lesson IDs is faster. Prefer data-driven requirements if more lessons are
+              expected soon.
+            </p>
+          </article>
+          <article class="card warning">
+            <h3>How strict should result order be?</h3>
+            <p>
+              Some SQL lessons should require ordering, while others should not. Validation
+              diagnostics should distinguish wrong data from correct data in a different order.
+            </p>
+          </article>
+          <article class="card warning">
+            <h3>Menu vs inline controls</h3>
+            <p>
+              Inline actions improve discoverability but can clutter table nodes. Start with visible
+              hover/focus controls and keep the current menu as the complete action surface.
+            </p>
+          </article>
+          <article class="card warning">
+            <h3>Responsive graph behavior</h3>
+            <p>
+              React Flow works on small screens, but node density and side panels may compete for
+              space. Favor tabs or drawers on small screens instead of compressing all panels at once.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Definition Of Done</h2>
+          <p>
+            Use this final checklist before considering the UI/UX improvement track complete.
+          </p>
+        </div>
+        <ul class="checklist">
+          <li>Users receive live feedback before previewing results.</li>
+          <li>Failed previews explain what is wrong in plain language.</li>
+          <li>First-time users can identify the next action without reading source code or guessing hidden gestures.</li>
+          <li>The app works without horizontal scrolling at common viewport widths.</li>
+          <li>Each shipped PR includes focused tests or a clear manual verification note.</li>
+          <li>Core app behavior remains intact: build query, generate SQL, execute preview, pass lessons.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
