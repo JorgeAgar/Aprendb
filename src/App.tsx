@@ -3,6 +3,7 @@ import {
   BarsArrowDownIcon,
   CheckCircleIcon,
   CircleStackIcon,
+  ClipboardDocumentIcon,
   CursorArrowRaysIcon,
   ExclamationTriangleIcon,
   FunnelIcon,
@@ -26,7 +27,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { commerceSchema } from "@/data/schema";
 import { lessons } from "@/data/lessons";
@@ -121,12 +122,15 @@ export function App() {
   const [activeMobileTab, setActiveMobileTab] = useState<MobileTab>("graph");
 
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) ?? lessons[0];
+  const activeLessonIndex = activeLesson ? lessons.findIndex((lesson) => lesson.id === activeLesson.id) : -1;
+  const nextLesson = activeLessonIndex >= 0 ? lessons[activeLessonIndex + 1] : undefined;
   const joinedTableIds = useMemo(() => getJoinedTableIds(query, commerceSchema), [query]);
   const sql = useMemo(() => generateSql(query, commerceSchema), [query]);
   const validationReport = useMemo(
     () => (activeLesson ? getLessonValidationReport(result, activeLesson.expectedResult) : null),
     [activeLesson, result],
   );
+  const currentPreviewPassed = Boolean(result && validationReport?.passed);
   const requirementStates = useMemo(
     () => (activeLesson ? getLessonRequirementStates(activeLesson, query, result) : []),
     [activeLesson, query, result],
@@ -238,7 +242,11 @@ export function App() {
     );
   }
 
-  function resetCurrentQuery() {
+  function resetCurrentQuery(confirmFirst = false) {
+    if (confirmFirst && !window.confirm("Reset the current query and clear the preview result?")) {
+      return;
+    }
+
     setQuery(createEmptyQuery());
     setResult(null);
     setActionMenu(null);
@@ -252,8 +260,12 @@ export function App() {
       const passed = activeLesson ? validateLessonResult(nextResult, activeLesson.expectedResult) : false;
       setResult(nextResult);
 
-      if (passed && activeLesson && !passedLessonIds.includes(activeLesson.id)) {
-        setPassedLessonIds([...passedLessonIds, activeLesson.id]);
+      if (passed && activeLesson) {
+        setPassedLessonIds((currentPassedLessonIds) =>
+          currentPassedLessonIds.includes(activeLesson.id)
+            ? currentPassedLessonIds
+            : [...currentPassedLessonIds, activeLesson.id],
+        );
       }
 
       setStatus({
@@ -278,6 +290,46 @@ export function App() {
     setActionMenu(null);
     setStatus({ kind: "idle", message: "New lesson loaded. Choose a starting table." });
   }
+
+  function goToNextLesson() {
+    if (nextLesson) {
+      chooseLesson(nextLesson.id);
+    }
+  }
+
+  useEffect(() => {
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        if (actionMenu) {
+          event.preventDefault();
+          setActionMenu(null);
+          return;
+        }
+
+        if (isLessonPanelOpen) {
+          event.preventDefault();
+          setIsLessonPanelOpen(false);
+        }
+      }
+
+      if (isEditableEventTarget(event.target)) {
+        return;
+      }
+
+      if (event.ctrlKey && event.key === "Enter" && !event.shiftKey && !event.altKey && query.baseTableId) {
+        event.preventDefault();
+        void previewResult();
+      }
+
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "r" && !event.altKey) {
+        event.preventDefault();
+        resetCurrentQuery(true);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [actionMenu, isLessonPanelOpen, query.baseTableId, sql, activeLesson, passedLessonIds, nextLesson]);
 
   const resizeLeftPanel = useCallback((clientX: number) => {
     setLeftPanelWidth(clamp(clientX, minLeftPanelWidth, maxLeftPanelWidth));
@@ -434,7 +486,12 @@ export function App() {
 
   const outputPanel = (
     <aside className="output-panel grid h-full min-h-0 overflow-hidden border-l border-border bg-card">
-      <StatusPanel status={status} />
+      <StatusPanel
+        status={status}
+        activeLessonPassed={currentPreviewPassed}
+        hasNextLesson={Boolean(nextLesson)}
+        onNextLesson={goToNextLesson}
+      />
       <SqlPanel sql={sql} />
       <ResultPanel result={result} expected={activeLesson?.expectedResult ?? null} report={validationReport} />
       {queryControls}
@@ -455,13 +512,9 @@ export function App() {
             </div>
           </div>
           <div className="flex min-w-0 items-center gap-2">
-            <Button variant="outline" size="sm" onClick={resetCurrentQuery}>
+            <Button variant="outline" size="sm" onClick={() => resetCurrentQuery()} title="Reset current query">
               <ArrowPathIcon aria-hidden="true" />
-              Reset
-            </Button>
-            <Button size="sm" onClick={resetCurrentQuery}>
-              <PlusIcon aria-hidden="true" />
-              New Query
+              Reset Query
             </Button>
           </div>
         </header>
@@ -521,7 +574,12 @@ export function App() {
             ) : null}
             {activeMobileTab === "query" ? (
               <aside className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-auto bg-card">
-                <StatusPanel status={status} />
+                <StatusPanel
+                  status={status}
+                  activeLessonPassed={currentPreviewPassed}
+                  hasNextLesson={Boolean(nextLesson)}
+                  onNextLesson={goToNextLesson}
+                />
                 <div className="min-h-0" />
                 {queryControls}
               </aside>
@@ -1025,7 +1083,17 @@ function RequirementIcon({ state }: { state: RequirementState }) {
   return <XCircleIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />;
 }
 
-function StatusPanel({ status }: { status: QueryStatus }) {
+function StatusPanel({
+  status,
+  activeLessonPassed,
+  hasNextLesson,
+  onNextLesson,
+}: {
+  status: QueryStatus;
+  activeLessonPassed: boolean;
+  hasNextLesson: boolean;
+  onNextLesson: () => void;
+}) {
   return (
     <div
       className={cn(
@@ -1045,6 +1113,19 @@ function StatusPanel({ status }: { status: QueryStatus }) {
         <div className="min-w-0">
           <h2 className="text-sm font-semibold">Lesson Status</h2>
           <p className="mt-1 text-xs text-muted-foreground">{status.message}</p>
+          {activeLessonPassed ? (
+            <div className="mt-3">
+              {hasNextLesson ? (
+                <Button size="sm" onClick={onNextLesson}>
+                  Next Lesson
+                </Button>
+              ) : (
+                <p className="rounded-md border border-primary/40 bg-background px-3 py-2 text-xs font-medium text-foreground">
+                  All lessons complete.
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -1052,10 +1133,50 @@ function StatusPanel({ status }: { status: QueryStatus }) {
 }
 
 function SqlPanel({ sql }: { sql: string }) {
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error" | "unavailable">("idle");
+
+  useEffect(() => {
+    if (copyStatus === "idle") {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setCopyStatus("idle"), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [copyStatus]);
+
+  async function copySql() {
+    if (!navigator.clipboard?.writeText) {
+      setCopyStatus("unavailable");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(sql);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    }
+  }
+
   return (
     <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] border-b border-border">
-      <div className="border-b border-border px-4 py-3">
+      <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold">Generated SQL</h2>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-muted-foreground" aria-live="polite">
+            {copyStatus === "copied"
+              ? "Copied"
+              : copyStatus === "error"
+                ? "Copy failed"
+                : copyStatus === "unavailable"
+                  ? "Clipboard unavailable"
+                  : ""}
+          </span>
+          <Button size="sm" variant="outline" onClick={copySql}>
+            <ClipboardDocumentIcon aria-hidden="true" />
+            Copy SQL
+          </Button>
+        </div>
       </div>
       <pre className="min-h-0 min-w-0 max-w-full overflow-auto whitespace-pre-wrap p-4 text-sm leading-6 [overflow-wrap:anywhere]">
         {sql.split("\n").map((line, index) => (
@@ -1353,6 +1474,19 @@ function formatRows(rows: QueryResult["rows"]) {
 
 function formatRow(row: QueryResult["rows"][number]) {
   return `[${row.map((value) => (value === null ? "NULL" : String(value))).join(", ")}]`;
+}
+
+function isEditableEventTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return (
+    target.isContentEditable ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  );
 }
 
 function clamp(value: number, min: number, max: number) {
